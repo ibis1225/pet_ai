@@ -1,0 +1,15 @@
+aws_region    = "ap-northeast-2"
+environment   = "dev"
+project_name  = "petai"
+vpc_cidr      = "10.0.0.0/16"
+
+# RDS
+db_instance_class = "db.t3.micro"
+db_name           = "petai"
+db_username       = "petai_admin"
+db_password       = "CHANGE_THIS_PASSWORD"
+
+# ECS
+backend_cpu           = 256
+backend_memory        = 512
+backend_desired_count = 1
