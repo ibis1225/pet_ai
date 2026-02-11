@@ -21,6 +21,12 @@ class ProductCategory(str, PyEnum):
     OTHER = "other"
 
 
+class ProductStatus(str, PyEnum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    OUT_OF_STOCK = "out_of_stock"
+
+
 class Product(Base):
     __tablename__ = "products"
 
