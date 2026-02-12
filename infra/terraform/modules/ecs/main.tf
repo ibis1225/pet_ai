@@ -1,25 +1,36 @@
+# ========================================
+# EC2-based deployment (replaces ECS Fargate)
+# Single t4g.small runs all services via Docker Compose + Nginx
+# Cost: ~$12-20/mo vs ECS+ALB+NAT ~$77/mo
+# ========================================
+
 variable "project_name" { type = string }
 variable "environment" { type = string }
 variable "aws_region" { type = string }
 variable "vpc_id" { type = string }
 variable "public_subnet_ids" { type = list(string) }
-variable "private_subnet_ids" { type = list(string) }
-variable "backend_cpu" { type = number }
-variable "backend_memory" { type = number }
-variable "backend_desired_count" { type = number }
-variable "linebot_cpu" { type = number }
-variable "linebot_memory" { type = number }
-variable "linebot_desired_count" { type = number }
+variable "ec2_instance_type" {
+  type    = string
+  default = "t4g.small"
+}
+variable "ec2_volume_size" {
+  type    = number
+  default = 30
+}
+
+# Database
 variable "db_endpoint" { type = string }
 variable "db_name" { type = string }
 variable "db_username" { type = string }
 variable "db_password" { type = string }
+
+# Secrets
 variable "line_channel_access_token" { type = string }
 variable "line_channel_secret" { type = string }
 variable "openai_api_key" { type = string }
 
 # ========================================
-# Secrets Manager
+# Secrets Manager (keep secrets secure)
 # ========================================
 resource "aws_secretsmanager_secret" "app_secrets" {
   name = "${var.project_name}-${var.environment}-secrets"
@@ -28,40 +39,23 @@ resource "aws_secretsmanager_secret" "app_secrets" {
 resource "aws_secretsmanager_secret_version" "app_secrets" {
   secret_id = aws_secretsmanager_secret.app_secrets.id
   secret_string = jsonencode({
-    DATABASE_URL               = "mysql+aiomysql://${var.db_username}:${var.db_password}@${var.db_endpoint}/${var.db_name}"
-    LINE_CHANNEL_ACCESS_TOKEN  = var.line_channel_access_token
-    LINE_CHANNEL_SECRET        = var.line_channel_secret
-    OPENAI_API_KEY             = var.openai_api_key
+    DATABASE_URL              = "mysql+aiomysql://${var.db_username}:${var.db_password}@${var.db_endpoint}/${var.db_name}"
+    LINE_CHANNEL_ACCESS_TOKEN = var.line_channel_access_token
+    LINE_CHANNEL_SECRET       = var.line_channel_secret
+    OPENAI_API_KEY            = var.openai_api_key
   })
 }
 
 # ========================================
 # CloudWatch Log Groups
 # ========================================
-resource "aws_cloudwatch_log_group" "backend" {
-  name              = "/ecs/${var.project_name}-${var.environment}/backend"
-  retention_in_days = 30
-}
-
-resource "aws_cloudwatch_log_group" "line_bot" {
-  name              = "/ecs/${var.project_name}-${var.environment}/line-bot"
-  retention_in_days = 30
+resource "aws_cloudwatch_log_group" "ec2" {
+  name              = "/ec2/${var.project_name}-${var.environment}"
+  retention_in_days = 14
 }
 
 # ========================================
-# ECS Cluster
-# ========================================
-resource "aws_ecs_cluster" "main" {
-  name = "${var.project_name}-${var.environment}-cluster"
-
-  setting {
-    name  = "containerInsights"
-    value = "enabled"
-  }
-}
-
-# ========================================
-# ECR Repositories
+# ECR Repositories (for Docker images)
 # ========================================
 resource "aws_ecr_repository" "backend" {
   name                 = "${var.project_name}-backend"
@@ -82,86 +76,116 @@ resource "aws_ecr_repository" "line_bot" {
 }
 
 # ========================================
-# IAM Roles
+# SSH Key Pair
 # ========================================
-resource "aws_iam_role" "ecs_task_execution" {
-  name = "${var.project_name}-${var.environment}-ecs-execution"
+resource "aws_key_pair" "ec2" {
+  key_name   = "${var.project_name}-${var.environment}-key"
+  public_key = file("${path.module}/ec2_key.pub")
+
+  lifecycle {
+    ignore_changes = [public_key]
+  }
+}
+
+# ========================================
+# IAM Role for EC2
+# ========================================
+resource "aws_iam_role" "ec2" {
+  name = "${var.project_name}-${var.environment}-ec2-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
       Action = "sts:AssumeRole"
       Effect = "Allow"
-      Principal = { Service = "ecs-tasks.amazonaws.com" }
+      Principal = { Service = "ec2.amazonaws.com" }
     }]
   })
 }
 
-resource "aws_iam_role_policy_attachment" "ecs_task_execution" {
-  role       = aws_iam_role.ecs_task_execution.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-}
-
-resource "aws_iam_role_policy" "ecs_secrets" {
-  name = "${var.project_name}-${var.environment}-ecs-secrets"
-  role = aws_iam_role.ecs_task_execution.id
+# ECR pull + Secrets Manager read + S3 access + CloudWatch logs
+resource "aws_iam_role_policy" "ec2_policy" {
+  name = "${var.project_name}-${var.environment}-ec2-policy"
+  role = aws_iam_role.ec2.id
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect   = "Allow"
-      Action   = ["secretsmanager:GetSecretValue"]
-      Resource = [aws_secretsmanager_secret.app_secrets.arn]
-    }]
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage",
+        ]
+        Resource = "*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["secretsmanager:GetSecretValue"]
+        Resource = [aws_secretsmanager_secret.app_secrets.arn]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject",
+          "s3:ListBucket",
+        ]
+        Resource = ["*"]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogStreams",
+        ]
+        Resource = ["${aws_cloudwatch_log_group.ec2.arn}:*"]
+      },
+    ]
   })
 }
 
-resource "aws_iam_role" "ecs_task" {
-  name = "${var.project_name}-${var.environment}-ecs-task"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Action = "sts:AssumeRole"
-      Effect = "Allow"
-      Principal = { Service = "ecs-tasks.amazonaws.com" }
-    }]
-  })
-}
-
-resource "aws_iam_role_policy" "ecs_task_s3" {
-  name = "${var.project_name}-${var.environment}-ecs-s3"
-  role = aws_iam_role.ecs_task.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect   = "Allow"
-      Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:ListBucket"]
-      Resource = ["*"]
-    }]
-  })
+resource "aws_iam_instance_profile" "ec2" {
+  name = "${var.project_name}-${var.environment}-ec2-profile"
+  role = aws_iam_role.ec2.name
 }
 
 # ========================================
-# ALB (Application Load Balancer)
+# EC2 Security Group
 # ========================================
-resource "aws_security_group" "alb" {
-  name_prefix = "${var.project_name}-${var.environment}-alb-"
+resource "aws_security_group" "ec2" {
+  name_prefix = "${var.project_name}-${var.environment}-ec2-"
   vpc_id      = var.vpc_id
 
+  # SSH
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "SSH access"
+  }
+
+  # HTTP (Nginx)
   ingress {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
+    description = "HTTP"
   }
 
+  # HTTPS (Nginx TLS)
   ingress {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
+    description = "HTTPS"
   }
 
   egress {
@@ -170,213 +194,83 @@ resource "aws_security_group" "alb" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
-}
 
-resource "aws_lb" "main" {
-  name               = "${var.project_name}-${var.environment}-alb"
-  internal           = false
-  load_balancer_type = "application"
-  security_groups    = [aws_security_group.alb.id]
-  subnets            = var.public_subnet_ids
-}
-
-resource "aws_lb_target_group" "backend" {
-  name        = "${var.project_name}-${var.environment}-backend"
-  port        = 8000
-  protocol    = "HTTP"
-  vpc_id      = var.vpc_id
-  target_type = "ip"
-
-  health_check {
-    path                = "/health"
-    healthy_threshold   = 2
-    unhealthy_threshold = 3
-    timeout             = 5
-    interval            = 30
-  }
-}
-
-resource "aws_lb_target_group" "line_bot" {
-  name        = "${var.project_name}-${var.environment}-linebot"
-  port        = 8001
-  protocol    = "HTTP"
-  vpc_id      = var.vpc_id
-  target_type = "ip"
-
-  health_check {
-    path                = "/health"
-    healthy_threshold   = 2
-    unhealthy_threshold = 3
-    timeout             = 5
-    interval            = 30
-  }
-}
-
-# HTTP listener - default to backend API
-resource "aws_lb_listener" "http" {
-  load_balancer_arn = aws_lb.main.arn
-  port              = 80
-  protocol          = "HTTP"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.backend.arn
-  }
-}
-
-# LINE Bot routing: /webhook -> LINE Bot service
-resource "aws_lb_listener_rule" "line_bot" {
-  listener_arn = aws_lb_listener.http.arn
-  priority     = 100
-
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.line_bot.arn
-  }
-
-  condition {
-    path_pattern {
-      values = ["/webhook", "/webhook/*"]
-    }
-  }
+  tags = { Name = "${var.project_name}-${var.environment}-ec2-sg" }
 }
 
 # ========================================
-# ECS Security Group
+# Elastic IP (static public IP)
 # ========================================
-resource "aws_security_group" "ecs" {
-  name_prefix = "${var.project_name}-${var.environment}-ecs-"
-  vpc_id      = var.vpc_id
+resource "aws_eip" "ec2" {
+  domain = "vpc"
+  tags   = { Name = "${var.project_name}-${var.environment}-ec2-eip" }
+}
 
-  ingress {
-    from_port       = 0
-    to_port         = 0
-    protocol        = "-1"
-    security_groups = [aws_security_group.alb.id]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+resource "aws_eip_association" "ec2" {
+  instance_id   = aws_instance.main.id
+  allocation_id = aws_eip.ec2.id
 }
 
 # ========================================
-# Backend - Task Definition & Service
+# EC2 Instance (t4g.small - Graviton ARM)
 # ========================================
-resource "aws_ecs_task_definition" "backend" {
-  family                   = "${var.project_name}-${var.environment}-backend"
-  network_mode             = "awsvpc"
-  requires_compatibilities = ["FARGATE"]
-  cpu                      = var.backend_cpu
-  memory                   = var.backend_memory
-  execution_role_arn       = aws_iam_role.ecs_task_execution.arn
-  task_role_arn            = aws_iam_role.ecs_task.arn
 
-  container_definitions = jsonencode([{
-    name  = "backend"
-    image = "${aws_ecr_repository.backend.repository_url}:latest"
-    portMappings = [{ containerPort = 8000, protocol = "tcp" }]
-    secrets = [
-      { name = "DATABASE_URL", valueFrom = "${aws_secretsmanager_secret.app_secrets.arn}:DATABASE_URL::" },
-      { name = "LINE_CHANNEL_ACCESS_TOKEN", valueFrom = "${aws_secretsmanager_secret.app_secrets.arn}:LINE_CHANNEL_ACCESS_TOKEN::" },
-      { name = "LINE_CHANNEL_SECRET", valueFrom = "${aws_secretsmanager_secret.app_secrets.arn}:LINE_CHANNEL_SECRET::" },
-      { name = "OPENAI_API_KEY", valueFrom = "${aws_secretsmanager_secret.app_secrets.arn}:OPENAI_API_KEY::" },
-    ]
-    environment = [
-      { name = "APP_NAME", value = "PetAI" },
-      { name = "DEBUG", value = "false" },
-    ]
-    logConfiguration = {
-      logDriver = "awslogs"
-      options = {
-        "awslogs-group"         = "/ecs/${var.project_name}-${var.environment}/backend"
-        "awslogs-region"        = var.aws_region
-        "awslogs-stream-prefix" = "ecs"
-      }
-    }
-  }])
-}
+# Latest Amazon Linux 2023 ARM AMI
+data "aws_ami" "al2023_arm" {
+  most_recent = true
+  owners      = ["amazon"]
 
-resource "aws_ecs_service" "backend" {
-  name            = "${var.project_name}-${var.environment}-backend"
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.backend.arn
-  desired_count   = var.backend_desired_count
-  launch_type     = "FARGATE"
-
-  network_configuration {
-    security_groups = [aws_security_group.ecs.id]
-    subnets         = var.private_subnet_ids
+  filter {
+    name   = "name"
+    values = ["al2023-ami-*-arm64"]
   }
 
-  load_balancer {
-    target_group_arn = aws_lb_target_group.backend.arn
-    container_name   = "backend"
-    container_port   = 8000
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
   }
 }
 
-# ========================================
-# LINE Bot - Task Definition & Service
-# ========================================
-resource "aws_ecs_task_definition" "line_bot" {
-  family                   = "${var.project_name}-${var.environment}-line-bot"
-  network_mode             = "awsvpc"
-  requires_compatibilities = ["FARGATE"]
-  cpu                      = var.linebot_cpu
-  memory                   = var.linebot_memory
-  execution_role_arn       = aws_iam_role.ecs_task_execution.arn
-  task_role_arn            = aws_iam_role.ecs_task.arn
+resource "aws_instance" "main" {
+  ami                    = data.aws_ami.al2023_arm.id
+  instance_type          = var.ec2_instance_type
+  key_name               = aws_key_pair.ec2.key_name
+  vpc_security_group_ids = [aws_security_group.ec2.id]
+  subnet_id              = var.public_subnet_ids[0]
+  iam_instance_profile   = aws_iam_instance_profile.ec2.name
 
-  container_definitions = jsonencode([{
-    name  = "line-bot"
-    image = "${aws_ecr_repository.line_bot.repository_url}:latest"
-    portMappings = [{ containerPort = 8001, protocol = "tcp" }]
-    secrets = [
-      { name = "LINE_CHANNEL_ACCESS_TOKEN", valueFrom = "${aws_secretsmanager_secret.app_secrets.arn}:LINE_CHANNEL_ACCESS_TOKEN::" },
-      { name = "LINE_CHANNEL_SECRET", valueFrom = "${aws_secretsmanager_secret.app_secrets.arn}:LINE_CHANNEL_SECRET::" },
-      { name = "OPENAI_API_KEY", valueFrom = "${aws_secretsmanager_secret.app_secrets.arn}:OPENAI_API_KEY::" },
-    ]
-    environment = [
-      { name = "BACKEND_API_URL", value = "http://${aws_lb.main.dns_name}/api/v1" },
-    ]
-    logConfiguration = {
-      logDriver = "awslogs"
-      options = {
-        "awslogs-group"         = "/ecs/${var.project_name}-${var.environment}/line-bot"
-        "awslogs-region"        = var.aws_region
-        "awslogs-stream-prefix" = "ecs"
-      }
-    }
-  }])
-}
-
-resource "aws_ecs_service" "line_bot" {
-  name            = "${var.project_name}-${var.environment}-line-bot"
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.line_bot.arn
-  desired_count   = var.linebot_desired_count
-  launch_type     = "FARGATE"
-
-  network_configuration {
-    security_groups = [aws_security_group.ecs.id]
-    subnets         = var.private_subnet_ids
+  root_block_device {
+    volume_type           = "gp3"
+    volume_size           = var.ec2_volume_size
+    encrypted             = true
+    delete_on_termination = true
   }
 
-  load_balancer {
-    target_group_arn = aws_lb_target_group.line_bot.arn
-    container_name   = "line-bot"
-    container_port   = 8001
+  user_data = base64encode(templatefile("${path.module}/user_data.sh", {
+    aws_region    = var.aws_region
+    project_name  = var.project_name
+    environment   = var.environment
+    secret_arn    = aws_secretsmanager_secret.app_secrets.arn
+    backend_ecr   = aws_ecr_repository.backend.repository_url
+    linebot_ecr   = aws_ecr_repository.line_bot.repository_url
+    db_endpoint   = var.db_endpoint
+    db_name       = var.db_name
+  }))
+
+  tags = {
+    Name = "${var.project_name}-${var.environment}-server"
+  }
+
+  lifecycle {
+    ignore_changes = [ami, user_data]
   }
 }
 
 # ========================================
 # Outputs
 # ========================================
-output "cluster_name" { value = aws_ecs_cluster.main.name }
-output "alb_dns_name" { value = aws_lb.main.dns_name }
+output "ec2_public_ip" { value = aws_eip.ec2.public_ip }
+output "ec2_instance_id" { value = aws_instance.main.id }
 output "backend_ecr_url" { value = aws_ecr_repository.backend.repository_url }
 output "line_bot_ecr_url" { value = aws_ecr_repository.line_bot.repository_url }
+output "security_group_id" { value = aws_security_group.ec2.id }

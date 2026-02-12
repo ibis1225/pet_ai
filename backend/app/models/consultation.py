@@ -26,7 +26,7 @@ class ConsultationStatus(str, PyEnum):
 
 
 class ConsultationStep(str, PyEnum):
-    """Consultation flow steps (10-step state machine)."""
+    """Consultation flow steps (11-step state machine)."""
     MEMBER_TYPE = "member_type"           # Step 1: 개인회원/기업회원
     GUARDIAN_NAME = "guardian_name"       # Step 2: 보호자 이름
     GUARDIAN_PHONE = "guardian_phone"     # Step 3: 보호자 연락처
@@ -34,9 +34,10 @@ class ConsultationStep(str, PyEnum):
     PET_NAME = "pet_name"                 # Step 5: 반려동물 이름
     PET_AGE = "pet_age"                   # Step 6: 반려동물 나이
     CATEGORY = "category"                 # Step 7: 상담 카테고리
-    URGENCY = "urgency"                   # Step 8: 긴급도
-    DESCRIPTION = "description"           # Step 9: 상담 내용
-    PREFERRED_TIME = "preferred_time"     # Step 10: 희망 상담 시간
+    SUBCATEGORY = "subcategory"           # Step 8: 세부 상담 항목
+    URGENCY = "urgency"                   # Step 9: 긴급도
+    DESCRIPTION = "description"           # Step 10: 상담 내용
+    PREFERRED_TIME = "preferred_time"     # Step 11: 희망 상담 시간
     COMPLETED = "completed"               # 상담 완료
 
 
@@ -54,11 +55,16 @@ class PetType(str, PyEnum):
 
 
 class ConsultationCategory(str, PyEnum):
-    """Consultation category options."""
-    HEALTH = "health"               # 질병/건강
-    NUTRITION = "nutrition"         # 영양/사료
+    """Consultation category options - aligned with business categories."""
+    VETERINARY = "veterinary"       # 동물병원 (건강/질병/예방접종)
+    GROOMING = "grooming"           # 미용실
+    NUTRITION = "nutrition"         # 영양/사료 상담
     BEHAVIOR = "behavior"           # 행동 교정
-    GROOMING = "grooming"           # 미용/관리
+    TRAINING = "training"           # 훈련소
+    HOTEL = "hotel"                 # 펫호텔/돌봄
+    DAYCARE = "daycare"             # 유치원
+    INSURANCE = "insurance"         # 펫보험
+    SHOPPING = "shopping"           # 상품 구매 상담
     EMERGENCY = "emergency"         # 응급 상황
     OTHER = "other"                 # 기타 문의
 
@@ -114,6 +120,7 @@ class Consultation(Base):
     category: Mapped[ConsultationCategory | None] = mapped_column(
         SAEnum(ConsultationCategory), nullable=True
     )
+    subcategory: Mapped[str | None] = mapped_column(String(100), nullable=True)
     urgency: Mapped[ConsultationUrgency | None] = mapped_column(
         SAEnum(ConsultationUrgency), nullable=True
     )

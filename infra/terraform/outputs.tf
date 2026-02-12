@@ -3,9 +3,9 @@ output "vpc_id" {
   value       = module.vpc.vpc_id
 }
 
-output "alb_dns_name" {
-  description = "ALB DNS name"
-  value       = module.ecs.alb_dns_name
+output "ec2_public_ip" {
+  description = "EC2 server public IP (use for LINE webhook, SSH)"
+  value       = module.ec2.ec2_public_ip
 }
 
 output "rds_endpoint" {
@@ -16,12 +16,12 @@ output "rds_endpoint" {
 
 output "backend_ecr_url" {
   description = "Backend ECR repository URL"
-  value       = module.ecs.backend_ecr_url
+  value       = module.ec2.backend_ecr_url
 }
 
 output "line_bot_ecr_url" {
   description = "LINE Bot ECR repository URL"
-  value       = module.ecs.line_bot_ecr_url
+  value       = module.ec2.line_bot_ecr_url
 }
 
 output "assets_bucket" {

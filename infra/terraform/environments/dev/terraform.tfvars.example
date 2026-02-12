@@ -8,23 +8,27 @@ environment   = "dev"
 project_name  = "petai"
 vpc_cidr      = "10.0.0.0/16"
 
-# RDS
-db_instance_class = "db.t3.micro"
+# EC2 (t4g.small Graviton - Docker + Nginx 올인원 서버)
+ec2_instance_type = "t4g.small"
+ec2_volume_size   = 30
+
+# RDS (db.t4g.micro Graviton - gp3 스토리지)
+db_instance_class = "db.t4g.micro"
 db_name           = "petai"
 db_username       = "petai_admin"
 db_password       = "CHANGE_THIS_PASSWORD"
-
-# ECS - Backend
-backend_cpu           = 256
-backend_memory        = 512
-backend_desired_count = 1
-
-# ECS - LINE Bot
-linebot_cpu           = 256
-linebot_memory        = 512
-linebot_desired_count = 1
 
 # Secrets (API Keys)
 line_channel_access_token = "YOUR_LINE_CHANNEL_ACCESS_TOKEN"
 line_channel_secret       = "YOUR_LINE_CHANNEL_SECRET"
 openai_api_key            = "YOUR_OPENAI_API_KEY"
+
+# ========================================
+# 예상 월 비용 (도쿄 리전):
+#   EC2 t4g.small:    ~$12-20/월
+#   EBS gp3 30GB:     ~$2-5/월
+#   RDS db.t4g.micro: ~$15-22/월
+#   S3/Secrets/Logs:  ~$2-6/월
+#   Elastic IP:       $0 (연결됨)
+#   합계:             ~$33-54/월
+# ========================================

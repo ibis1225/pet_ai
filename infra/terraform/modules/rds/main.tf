@@ -6,6 +6,10 @@ variable "instance_class" { type = string }
 variable "db_name" { type = string }
 variable "db_username" { type = string }
 variable "db_password" { type = string }
+variable "ec2_security_group_id" {
+  type    = string
+  default = ""
+}
 
 resource "aws_db_subnet_group" "main" {
   name       = "${var.project_name}-${var.environment}-db-subnet"
@@ -18,6 +22,7 @@ resource "aws_security_group" "rds" {
   name_prefix = "${var.project_name}-${var.environment}-rds-"
   vpc_id      = var.vpc_id
 
+  # Allow MySQL from VPC CIDR (EC2 in same VPC)
   ingress {
     from_port   = 3306
     to_port     = 3306
@@ -40,10 +45,12 @@ resource "aws_db_instance" "main" {
 
   engine         = "mysql"
   engine_version = "8.4"
-  instance_class = var.instance_class
+  instance_class = var.instance_class    # db.t4g.micro (Graviton)
 
+  # gp3 storage: cheaper than gp2, better performance
   allocated_storage     = 20
-  max_allocated_storage = 100
+  max_allocated_storage = 50
+  storage_type          = "gp3"
   storage_encrypted     = true
 
   db_name  = var.db_name
@@ -53,9 +60,17 @@ resource "aws_db_instance" "main" {
   db_subnet_group_name   = aws_db_subnet_group.main.name
   vpc_security_group_ids = [aws_security_group.rds.id]
 
-  backup_retention_period = 7
-  skip_final_snapshot     = var.environment != "prod"
-  deletion_protection     = var.environment == "prod"
+  # Cost optimization: minimal backup
+  backup_retention_period = 3
+  backup_window           = "03:00-04:00"
+  maintenance_window      = "Mon:04:00-Mon:05:00"
+
+  # No multi-AZ for dev (saves ~50%)
+  multi_az = false
+
+  skip_final_snapshot    = var.environment != "prod"
+  deletion_protection    = var.environment == "prod"
+  copy_tags_to_snapshot  = true
 
   tags = { Name = "${var.project_name}-${var.environment}-db" }
 }

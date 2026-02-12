@@ -1,0 +1,4 @@
+# PLACEHOLDER - Replace with your actual SSH public key before running terraform apply
+# Generate with: ssh-keygen -t ed25519 -f petai-key -C "petai-server"
+# Then copy petai-key.pub content here
+ssh-ed25519 PLACEHOLDER_REPLACE_WITH_YOUR_PUBLIC_KEY petai-server

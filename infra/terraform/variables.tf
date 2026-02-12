@@ -37,9 +37,9 @@ variable "vpc_cidr" {
 
 # RDS
 variable "db_instance_class" {
-  description = "RDS instance class"
+  description = "RDS instance class (Graviton for cost savings)"
   type        = string
-  default     = "db.t3.micro"
+  default     = "db.t4g.micro"
 }
 
 variable "db_name" {
@@ -61,42 +61,17 @@ variable "db_password" {
   sensitive   = true
 }
 
-# ECS - Backend
-variable "backend_cpu" {
-  description = "Backend task CPU units"
-  type        = number
-  default     = 256
+# EC2
+variable "ec2_instance_type" {
+  description = "EC2 instance type (Graviton ARM)"
+  type        = string
+  default     = "t4g.small"
 }
 
-variable "backend_memory" {
-  description = "Backend task memory (MiB)"
+variable "ec2_volume_size" {
+  description = "EC2 root volume size in GB (gp3)"
   type        = number
-  default     = 512
-}
-
-variable "backend_desired_count" {
-  description = "Number of backend tasks"
-  type        = number
-  default     = 1
-}
-
-# ECS - LINE Bot
-variable "linebot_cpu" {
-  description = "LINE Bot task CPU units"
-  type        = number
-  default     = 256
-}
-
-variable "linebot_memory" {
-  description = "LINE Bot task memory (MiB)"
-  type        = number
-  default     = 512
-}
-
-variable "linebot_desired_count" {
-  description = "Number of LINE Bot tasks"
-  type        = number
-  default     = 1
+  default     = 30
 }
 
 # Secrets (API Keys)

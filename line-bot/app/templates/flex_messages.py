@@ -174,66 +174,218 @@ def pet_type_message() -> dict:
 
 
 def category_message() -> dict:
-    """Step 7: Consultation category selection (6 categories)."""
+    """Step 7: Consultation category selection (11 categories, carousel)."""
     return {
         "type": "flex",
         "altText": "상담 카테고리 선택",
-        "contents": create_bubble(
-            header_text="📋 상담 카테고리",
-            body_contents=[
-                {
-                    "type": "text",
-                    "text": "상담 카테고리를 선택해주세요.",
-                    "wrap": True,
-                    "size": "md",
-                },
+        "contents": {
+            "type": "carousel",
+            "contents": [
+                # Bubble 1: 의료/미용/영양/행동 (4개)
+                create_bubble(
+                    header_text="📋 상담 카테고리 (1/3)",
+                    body_contents=[
+                        {
+                            "type": "text",
+                            "text": "상담 분야를 선택해주세요.",
+                            "wrap": True,
+                            "size": "sm",
+                            "color": "#666666",
+                        },
+                    ],
+                    footer_contents=[
+                        create_button(
+                            "🏥 동물병원 (건강/질병)",
+                            action_type="postback",
+                            data="action=consultation&step=category&value=veterinary",
+                            display_text="동물병원",
+                            color="#E74C3C",
+                        ),
+                        create_button(
+                            "✂️ 미용실",
+                            action_type="postback",
+                            data="action=consultation&step=category&value=grooming",
+                            display_text="미용실",
+                            color="#3498DB",
+                        ),
+                        create_button(
+                            "🍖 영양/사료 상담",
+                            action_type="postback",
+                            data="action=consultation&step=category&value=nutrition",
+                            display_text="영양/사료",
+                            color="#F39C12",
+                        ),
+                        create_button(
+                            "😺 행동 교정",
+                            action_type="postback",
+                            data="action=consultation&step=category&value=behavior",
+                            display_text="행동 교정",
+                            color="#9B59B6",
+                        ),
+                    ],
+                ),
+                # Bubble 2: 훈련/호텔/유치원/보험 (4개)
+                create_bubble(
+                    header_text="📋 상담 카테고리 (2/3)",
+                    body_contents=[
+                        {
+                            "type": "text",
+                            "text": "상담 분야를 선택해주세요.",
+                            "wrap": True,
+                            "size": "sm",
+                            "color": "#666666",
+                        },
+                    ],
+                    footer_contents=[
+                        create_button(
+                            "🎓 훈련소",
+                            action_type="postback",
+                            data="action=consultation&step=category&value=training",
+                            display_text="훈련소",
+                            color="#28A745",
+                        ),
+                        create_button(
+                            "🏨 펫호텔/돌봄",
+                            action_type="postback",
+                            data="action=consultation&step=category&value=hotel",
+                            display_text="펫호텔",
+                            color="#FFC107",
+                        ),
+                        create_button(
+                            "🎒 유치원",
+                            action_type="postback",
+                            data="action=consultation&step=category&value=daycare",
+                            display_text="유치원",
+                            color="#17A2B8",
+                        ),
+                        create_button(
+                            "📄 펫보험",
+                            action_type="postback",
+                            data="action=consultation&step=category&value=insurance",
+                            display_text="펫보험",
+                            color="#6F4E37",
+                        ),
+                    ],
+                ),
+                # Bubble 3: 쇼핑/응급/기타 (3개)
+                create_bubble(
+                    header_text="📋 상담 카테고리 (3/3)",
+                    body_contents=[
+                        {
+                            "type": "text",
+                            "text": "상담 분야를 선택해주세요.",
+                            "wrap": True,
+                            "size": "sm",
+                            "color": "#666666",
+                        },
+                    ],
+                    footer_contents=[
+                        create_button(
+                            "🛍️ 상품 구매 상담",
+                            action_type="postback",
+                            data="action=consultation&step=category&value=shopping",
+                            display_text="상품 구매",
+                            color="#6C757D",
+                        ),
+                        create_button(
+                            "🚨 응급 상황",
+                            action_type="postback",
+                            data="action=consultation&step=category&value=emergency",
+                            display_text="응급 상황",
+                            color="#C0392B",
+                        ),
+                        create_button(
+                            "📌 기타 문의",
+                            action_type="postback",
+                            data="action=consultation&step=category&value=other",
+                            display_text="기타 문의",
+                            color="#7F8C8D",
+                        ),
+                    ],
+                ),
             ],
-            footer_contents=[
-                create_button(
-                    "🏥 질병/건강",
-                    action_type="postback",
-                    data="action=consultation&step=category&value=health",
-                    display_text="질병/건강",
-                    color="#E74C3C",
-                ),
-                create_button(
-                    "🍖 영양/사료",
-                    action_type="postback",
-                    data="action=consultation&step=category&value=nutrition",
-                    display_text="영양/사료",
-                    color="#F39C12",
-                ),
-                create_button(
-                    "😺 행동 교정",
-                    action_type="postback",
-                    data="action=consultation&step=category&value=behavior",
-                    display_text="행동 교정",
-                    color="#9B59B6",
-                ),
-                create_button(
-                    "✂️ 미용/관리",
-                    action_type="postback",
-                    data="action=consultation&step=category&value=grooming",
-                    display_text="미용/관리",
-                    color="#3498DB",
-                ),
-                create_button(
-                    "💊 응급 상황",
-                    action_type="postback",
-                    data="action=consultation&step=category&value=emergency",
-                    display_text="응급 상황",
-                    color="#C0392B",
-                ),
-                create_button(
-                    "🏠 기타 문의",
-                    action_type="postback",
-                    data="action=consultation&step=category&value=other",
-                    display_text="기타 문의",
-                    color="#7F8C8D",
-                ),
-            ],
-        ),
+        },
     }
+
+
+def subcategory_message(category: str, subcategories: dict[str, str]) -> dict:
+    """Step 8: Subcategory selection based on chosen category."""
+    category_names = {
+        "veterinary": "동물병원",
+        "grooming": "미용실",
+        "nutrition": "영양/사료",
+        "behavior": "행동 교정",
+        "training": "훈련소",
+        "hotel": "펫호텔",
+        "daycare": "유치원",
+        "insurance": "펫보험",
+        "shopping": "상품 구매",
+        "emergency": "응급 상황",
+        "other": "기타",
+    }
+    cat_name = category_names.get(category, category)
+
+    buttons = []
+    colors = ["#4A90D9", "#E74C3C", "#28A745", "#F39C12", "#9B59B6", "#17A2B8"]
+    for i, (key, label) in enumerate(subcategories.items()):
+        buttons.append(
+            create_button(
+                label,
+                action_type="postback",
+                data=f"action=consultation&step=subcategory&value={key}",
+                display_text=label,
+                color=colors[i % len(colors)],
+            )
+        )
+
+    # LINE Flex allows max 6 buttons per bubble, split if needed
+    if len(buttons) <= 6:
+        return {
+            "type": "flex",
+            "altText": f"{cat_name} 세부 항목 선택",
+            "contents": create_bubble(
+                header_text=f"📂 {cat_name} - 세부 항목",
+                body_contents=[
+                    {
+                        "type": "text",
+                        "text": "세부 상담 항목을 선택해주세요.",
+                        "wrap": True,
+                        "size": "md",
+                    },
+                ],
+                footer_contents=buttons,
+            ),
+        }
+    else:
+        # Split into carousel if more than 6 items
+        bubbles = []
+        for chunk_idx in range(0, len(buttons), 4):
+            chunk = buttons[chunk_idx:chunk_idx + 4]
+            page = chunk_idx // 4 + 1
+            total_pages = (len(buttons) + 3) // 4
+            bubbles.append(
+                create_bubble(
+                    header_text=f"📂 {cat_name} ({page}/{total_pages})",
+                    body_contents=[
+                        {
+                            "type": "text",
+                            "text": "세부 상담 항목을 선택해주세요.",
+                            "wrap": True,
+                            "size": "sm",
+                            "color": "#666666",
+                        },
+                    ],
+                    footer_contents=chunk,
+                )
+            )
+        return {
+            "type": "flex",
+            "altText": f"{cat_name} 세부 항목 선택",
+            "contents": {
+                "type": "carousel",
+                "contents": bubbles,
+            },
+        }
 
 
 def urgency_message() -> dict:
@@ -338,15 +490,21 @@ def consultation_complete_message(
     urgency: str,
     description: str,
     preferred_time: str,
+    subcategory: str | None = None,
 ) -> dict:
     """Consultation completion confirmation message with full details."""
     category_display = {
-        "health": "질병/건강",
-        "nutrition": "영양/사료",
-        "behavior": "행동 교정",
-        "grooming": "미용/관리",
-        "emergency": "응급 상황",
-        "other": "기타 문의",
+        "veterinary": "🏥 동물병원",
+        "grooming": "✂️ 미용실",
+        "nutrition": "🍖 영양/사료",
+        "behavior": "😺 행동 교정",
+        "training": "🎓 훈련소",
+        "hotel": "🏨 펫호텔",
+        "daycare": "🎒 유치원",
+        "insurance": "📄 펫보험",
+        "shopping": "🛍️ 상품 구매",
+        "emergency": "🚨 응급 상황",
+        "other": "📌 기타 문의",
     }
     urgency_display = {
         "urgent": "🔴 긴급",
@@ -402,6 +560,10 @@ def consultation_complete_message(
                         info_row("📞 연락처", guardian_phone or "-"),
                         info_row("🐾 반려동물", f"{pet_name} ({pet_type_display.get(pet_type, pet_type)}, {pet_age or '나이 미입력'})"),
                         info_row("📋 카테고리", category_display.get(category, category)),
+                        *(
+                            [info_row("📂 세부항목", subcategory)]
+                            if subcategory else []
+                        ),
                         info_row("긴급도", urgency_display.get(urgency, urgency)),
                         info_row("🕐 선호 시간", time_display.get(preferred_time, preferred_time)),
                         info_row("💬 문의 내용", desc_short),
