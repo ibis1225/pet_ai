@@ -252,6 +252,18 @@ class ConsultationFlowService:
         channel_user_id: str | None = None,
     ) -> Consultation:
         """Create a new consultation and start the flow."""
+        # Cancel any existing active consultations for this user
+        if channel_user_id:
+            result = await self.db.execute(
+                select(Consultation).where(
+                    Consultation.channel_user_id == channel_user_id,
+                    Consultation.channel == channel,
+                    Consultation.status == ConsultationStatus.IN_PROGRESS,
+                )
+            )
+            for old in result.scalars().all():
+                old.status = ConsultationStatus.CANCELLED
+
         consultation_number = await self.generate_consultation_number()
 
         consultation = Consultation(
@@ -272,13 +284,13 @@ class ConsultationFlowService:
         channel_user_id: str,
         channel: str = "line",
     ) -> Consultation | None:
-        """Get active consultation for a channel user."""
+        """Get active consultation for a channel user (latest one only)."""
         result = await self.db.execute(
             select(Consultation).where(
                 Consultation.channel_user_id == channel_user_id,
                 Consultation.channel == channel,
                 Consultation.status == ConsultationStatus.IN_PROGRESS,
-            ).order_by(Consultation.created_at.desc())
+            ).order_by(Consultation.created_at.desc()).limit(1)
         )
         return result.scalar_one_or_none()
 
