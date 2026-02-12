@@ -1,4 +1,9 @@
-aws_region    = "ap-northeast-2"
+# AWS
+aws_region            = "ap-northeast-1"
+aws_access_key_id     = "YOUR_AWS_ACCESS_KEY_ID"
+aws_secret_access_key = "YOUR_AWS_SECRET_ACCESS_KEY"
+
+# Project
 environment   = "dev"
 project_name  = "petai"
 vpc_cidr      = "10.0.0.0/16"
@@ -9,7 +14,17 @@ db_name           = "petai"
 db_username       = "petai_admin"
 db_password       = "CHANGE_THIS_PASSWORD"
 
-# ECS
+# ECS - Backend
 backend_cpu           = 256
 backend_memory        = 512
 backend_desired_count = 1
+
+# ECS - LINE Bot
+linebot_cpu           = 256
+linebot_memory        = 512
+linebot_desired_count = 1
+
+# Secrets (API Keys)
+line_channel_access_token = "YOUR_LINE_CHANNEL_ACCESS_TOKEN"
+line_channel_secret       = "YOUR_LINE_CHANNEL_SECRET"
+openai_api_key            = "YOUR_OPENAI_API_KEY"
