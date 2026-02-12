@@ -23,9 +23,16 @@ from linebot.v3.messaging import (
 from app.config import settings
 from app.templates import (
     business_category_message,
+    category_message,
+    consultation_complete_message,
     main_menu_message,
     member_type_message,
+    pet_type_message,
+    preferred_time_message,
     product_category_message,
+    subcategory_message,
+    text_input_prompt,
+    urgency_message,
 )
 
 
@@ -173,20 +180,28 @@ class MessageHandler:
                 next_step = data.get("next_step")
                 message_text = data.get("message", "")
                 is_completed = data.get("is_completed", False)
-                flex_message = data.get("flex_message")
 
                 if is_completed:
-                    # Show completion with flex message
-                    if flex_message:
-                        await self._reply_flex(reply_token, flex_message)
-                    else:
-                        await self._reply_text(reply_token, message_text)
-                elif flex_message:
-                    # Show flex message for step
-                    await self._reply_flex(reply_token, flex_message)
+                    consultation = data.get("consultation", {})
+                    await self._reply_flex(
+                        reply_token,
+                        consultation_complete_message(
+                            consultation_number=consultation.get("consultation_number", ""),
+                            guardian_name=consultation.get("guardian_name", ""),
+                            guardian_phone=consultation.get("guardian_phone", ""),
+                            pet_name=consultation.get("pet_name", ""),
+                            pet_type=consultation.get("pet_type", ""),
+                            pet_age=consultation.get("pet_age", ""),
+                            category=consultation.get("category", ""),
+                            urgency=consultation.get("urgency", ""),
+                            description=consultation.get("description", ""),
+                            preferred_time=consultation.get("preferred_time", ""),
+                            subcategory=consultation.get("subcategory"),
+                        ),
+                    )
                 else:
-                    # Show text prompt
-                    await self._reply_text(reply_token, message_text)
+                    # Render step message locally using templates
+                    await self._show_step_message(reply_token, next_step, message_text)
             else:
                 await self._reply_text(
                     reply_token,
@@ -198,6 +213,46 @@ class MessageHandler:
                 reply_token,
                 "처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
             )
+
+    async def _show_step_message(
+        self,
+        reply_token: str,
+        step: str | None,
+        message: str,
+    ) -> None:
+        """Show the appropriate flex message for a consultation step."""
+        # Steps that use flex selection UI
+        step_templates = {
+            "member_type": member_type_message,
+            "pet_type": pet_type_message,
+            "category": category_message,
+            "urgency": urgency_message,
+            "preferred_time": preferred_time_message,
+        }
+
+        if step in step_templates:
+            await self._reply_flex(reply_token, step_templates[step]())
+        elif step == "subcategory":
+            # TODO: fetch subcategories from backend based on selected category
+            # For now, show text prompt
+            await self._reply_text(reply_token, message)
+        else:
+            # Text input steps: show prompt with example
+            examples = {
+                "guardian_name": "홍길동",
+                "guardian_phone": "010-1234-5678",
+                "pet_name": "콩이",
+                "pet_age": "3살 또는 3개월",
+                "description": None,
+            }
+            example = examples.get(step)
+            if step and step in examples:
+                await self._reply_flex(
+                    reply_token,
+                    text_input_prompt(message, example)
+                )
+            else:
+                await self._reply_text(reply_token, message)
 
     async def _start_consultation(
         self,

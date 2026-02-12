@@ -378,6 +378,7 @@ def _consultation_detail(consultation: Consultation) -> dict:
         "pet_type": consultation.pet_type.value if consultation.pet_type else "",
         "pet_age": consultation.pet_age or "",
         "category": consultation.category.value if consultation.category else "",
+        "subcategory": consultation.subcategory or "",
         "urgency": consultation.urgency.value if consultation.urgency else "",
         "description": consultation.description or "",
         "preferred_time": consultation.preferred_time or "",
