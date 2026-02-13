@@ -1,7 +1,7 @@
 import { getDistance, formatDistance } from './distance';
 
 // Google Maps API key - should be set in environment
-const GOOGLE_API_KEY = 'YOUR_GOOGLE_MAPS_API_KEY';
+const GOOGLE_API_KEY = 'AIzaSyBZg8UPrCrDeCJSDEVsNdqCthkt5W1-Mzg';
 
 // Pet-related place type mappings for Google Places
 const CATEGORY_SEARCH: Record<string, { keyword: string; type?: string }> = {

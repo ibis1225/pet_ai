@@ -13,7 +13,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.petai.app",
       "config": {
-        "googleMapsApiKey": "YOUR_GOOGLE_MAPS_API_KEY"
+        "googleMapsApiKey": "AIzaSyBZg8UPrCrDeCJSDEVsNdqCthkt5W1-Mzg"
       },
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "주변 반려동물 관련 업체를 검색하기 위해 위치 정보가 필요합니다."
@@ -26,7 +26,7 @@
       "package": "com.petai.app",
       "config": {
         "googleMaps": {
-          "apiKey": "YOUR_GOOGLE_MAPS_API_KEY"
+          "apiKey": "AIzaSyBZg8UPrCrDeCJSDEVsNdqCthkt5W1-Mzg"
         }
       },
       "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
