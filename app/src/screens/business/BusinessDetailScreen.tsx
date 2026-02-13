@@ -1,65 +1,227 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  Image,
+  Linking,
+} from 'react-native';
+import MapView, { Marker } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, fontSize, fontWeight, borderRadius, shadows } from '../../lib/theme';
+import { getPlaceDetail } from '../../lib/places';
+import { getDistance, formatDistance } from '../../lib/distance';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 
-export default function BusinessDetailScreen({ route }: any) {
-  const { id } = route.params;
+export default function BusinessDetailScreen({ route, navigation }: any) {
+  const { placeId, name, latitude: userLat, longitude: userLng } = route.params;
+  const [detail, setDetail] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    navigation.setOptions({ title: name || '업체 상세' });
+    loadDetail();
+  }, [placeId]);
+
+  const loadDetail = async () => {
+    try {
+      const data = await getPlaceDetail(placeId);
+      setDetail(data);
+    } catch (error) {
+      console.error('Failed to load place detail:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>업체 정보를 불러오는 중...</Text>
+      </View>
+    );
+  }
+
+  if (!detail) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Ionicons name="alert-circle-outline" size={48} color={colors.textLight} />
+        <Text style={styles.loadingText}>업체 정보를 불러올 수 없습니다</Text>
+      </View>
+    );
+  }
+
+  const distance = userLat && userLng
+    ? getDistance(userLat, userLng, detail.latitude, detail.longitude)
+    : null;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Hero Image Placeholder */}
-      <View style={styles.heroImage}>
-        <Ionicons name="business" size={64} color={colors.textLight} />
-      </View>
+      {/* Photo Gallery */}
+      {detail.photos && detail.photos.length > 0 ? (
+        <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}>
+          {detail.photos.map((url: string, i: number) => (
+            <Image key={i} source={{ uri: url }} style={styles.heroImage} />
+          ))}
+        </ScrollView>
+      ) : (
+        <View style={[styles.heroImage, styles.heroPlaceholder]}>
+          <Ionicons name="business" size={64} color={colors.textLight} />
+        </View>
+      )}
 
       {/* Basic Info */}
       <View style={styles.infoSection}>
-        <Text style={styles.name}>업체 정보 로딩중...</Text>
-        <Text style={styles.category}>카테고리</Text>
+        <Text style={styles.name}>{detail.name}</Text>
 
         <View style={styles.ratingRow}>
           <Ionicons name="star" size={18} color={colors.accent} />
-          <Text style={styles.rating}>0.0</Text>
-          <Text style={styles.reviewCount}>(0개의 리뷰)</Text>
+          <Text style={styles.rating}>
+            {detail.rating > 0 ? detail.rating.toFixed(1) : '-'}
+          </Text>
+          <Text style={styles.reviewCount}>
+            ({detail.rating_count}개의 리뷰)
+          </Text>
+          {distance !== null && (
+            <View style={styles.distanceBadge}>
+              <Ionicons name="navigate-outline" size={14} color={colors.primary} />
+              <Text style={styles.distanceText}>{formatDistance(distance)}</Text>
+            </View>
+          )}
         </View>
+
+        {detail.is_open !== null && (
+          <Text style={[styles.openStatus, detail.is_open ? styles.open : styles.closed]}>
+            {detail.is_open ? '영업중' : '영업 종료'}
+          </Text>
+        )}
 
         <View style={styles.infoRow}>
           <Ionicons name="location-outline" size={18} color={colors.textSecondary} />
-          <Text style={styles.infoText}>주소 정보</Text>
+          <Text style={styles.infoText}>{detail.address}</Text>
         </View>
-        <View style={styles.infoRow}>
-          <Ionicons name="call-outline" size={18} color={colors.textSecondary} />
-          <Text style={styles.infoText}>전화번호</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Ionicons name="time-outline" size={18} color={colors.textSecondary} />
-          <Text style={styles.infoText}>영업시간</Text>
-        </View>
+        {detail.phone && (
+          <TouchableOpacity
+            style={styles.infoRow}
+            onPress={() => Linking.openURL(`tel:${detail.phone}`)}
+          >
+            <Ionicons name="call-outline" size={18} color={colors.primary} />
+            <Text style={[styles.infoText, { color: colors.primary }]}>{detail.phone}</Text>
+          </TouchableOpacity>
+        )}
+        {detail.website && (
+          <TouchableOpacity
+            style={styles.infoRow}
+            onPress={() => Linking.openURL(detail.website)}
+          >
+            <Ionicons name="globe-outline" size={18} color={colors.primary} />
+            <Text style={[styles.infoText, { color: colors.primary }]} numberOfLines={1}>
+              {detail.website}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Action Buttons */}
       <View style={styles.actions}>
-        <Button title="전화하기" onPress={() => {}} variant="outline" style={styles.actionBtn} />
-        <Button title="예약하기" onPress={() => {}} style={styles.actionBtn} />
+        {detail.phone && (
+          <Button
+            title="전화하기"
+            onPress={() => Linking.openURL(`tel:${detail.phone}`)}
+            variant="outline"
+            style={styles.actionBtn}
+          />
+        )}
+        {detail.google_maps_url && (
+          <Button
+            title="길찾기"
+            onPress={() => Linking.openURL(detail.google_maps_url)}
+            style={styles.actionBtn}
+          />
+        )}
       </View>
 
-      {/* Description */}
-      <Card style={styles.descCard}>
-        <Text style={styles.descTitle}>업체 소개</Text>
-        <Text style={styles.descText}>업체 상세 정보가 여기에 표시됩니다.</Text>
+      {/* Mini Map */}
+      <Card style={styles.mapCard}>
+        <MapView
+          style={styles.miniMap}
+          initialRegion={{
+            latitude: detail.latitude,
+            longitude: detail.longitude,
+            latitudeDelta: 0.008,
+            longitudeDelta: 0.008,
+          }}
+          scrollEnabled={false}
+          zoomEnabled={false}
+        >
+          <Marker
+            coordinate={{
+              latitude: detail.latitude,
+              longitude: detail.longitude,
+            }}
+            title={detail.name}
+          />
+        </MapView>
+        <TouchableOpacity
+          style={styles.mapOverlay}
+          onPress={() => {
+            if (detail.google_maps_url) {
+              Linking.openURL(detail.google_maps_url);
+            }
+          }}
+        >
+          <Ionicons name="open-outline" size={16} color={colors.primary} />
+          <Text style={styles.mapOverlayText}>Google Maps에서 보기</Text>
+        </TouchableOpacity>
       </Card>
+
+      {/* Opening Hours */}
+      {detail.opening_hours && detail.opening_hours.length > 0 && (
+        <>
+          <Text style={styles.sectionTitle}>영업 시간</Text>
+          <Card style={styles.hoursCard}>
+            {detail.opening_hours.map((line: string, i: number) => (
+              <Text key={i} style={styles.hoursText}>{line}</Text>
+            ))}
+          </Card>
+        </>
+      )}
 
       {/* Reviews */}
       <Text style={styles.sectionTitle}>리뷰</Text>
-      <Card>
-        <View style={styles.emptyReviews}>
-          <Ionicons name="chatbubble-outline" size={32} color={colors.textLight} />
-          <Text style={styles.emptyText}>아직 리뷰가 없습니다</Text>
-        </View>
-      </Card>
+      {detail.reviews && detail.reviews.length > 0 ? (
+        detail.reviews.map((review: any, i: number) => (
+          <Card key={i} style={styles.reviewCard}>
+            <View style={styles.reviewHeader}>
+              <Text style={styles.reviewAuthor}>{review.author}</Text>
+              <View style={styles.reviewRating}>
+                {Array.from({ length: 5 }).map((_, idx) => (
+                  <Ionicons
+                    key={idx}
+                    name={idx < review.rating ? 'star' : 'star-outline'}
+                    size={14}
+                    color={colors.accent}
+                  />
+                ))}
+              </View>
+            </View>
+            <Text style={styles.reviewText} numberOfLines={4}>{review.text}</Text>
+            <Text style={styles.reviewTime}>{review.time}</Text>
+          </Card>
+        ))
+      ) : (
+        <Card style={styles.reviewCard}>
+          <View style={styles.emptyReviews}>
+            <Ionicons name="chatbubble-outline" size={32} color={colors.textLight} />
+            <Text style={styles.emptyText}>아직 리뷰가 없습니다</Text>
+          </View>
+        </Card>
+      )}
     </ScrollView>
   );
 }
@@ -72,8 +234,21 @@ const styles = StyleSheet.create({
   content: {
     paddingBottom: spacing.xxl,
   },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.md,
+  },
+  loadingText: {
+    fontSize: fontSize.md,
+    color: colors.textSecondary,
+  },
   heroImage: {
-    height: 200,
+    width: 400,
+    height: 220,
+  },
+  heroPlaceholder: {
     backgroundColor: colors.divider,
     alignItems: 'center',
     justifyContent: 'center',
@@ -88,15 +263,11 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.bold,
     color: colors.text,
   },
-  category: {
-    fontSize: fontSize.sm,
-    color: colors.primary,
-    fontWeight: fontWeight.medium,
-  },
   ratingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: spacing.sm,
+    flexWrap: 'wrap',
   },
   rating: {
     fontSize: fontSize.lg,
@@ -107,6 +278,30 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     color: colors.textSecondary,
   },
+  distanceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: colors.primary + '12',
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+  },
+  distanceText: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.bold,
+    color: colors.primary,
+  },
+  openStatus: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+  },
+  open: {
+    color: colors.success,
+  },
+  closed: {
+    color: colors.error,
+  },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -115,6 +310,7 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: fontSize.md,
     color: colors.textSecondary,
+    flex: 1,
   },
   actions: {
     flexDirection: 'row',
@@ -124,20 +320,27 @@ const styles = StyleSheet.create({
   actionBtn: {
     flex: 1,
   },
-  descCard: {
+  mapCard: {
     marginHorizontal: spacing.md,
-    padding: spacing.md,
+    overflow: 'hidden',
+    padding: 0,
   },
-  descTitle: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.bold,
-    color: colors.text,
-    marginBottom: spacing.sm,
+  miniMap: {
+    height: 180,
   },
-  descText: {
-    fontSize: fontSize.md,
-    color: colors.textSecondary,
-    lineHeight: 22,
+  mapOverlay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm + 2,
+    borderTopWidth: 1,
+    borderTopColor: colors.divider,
+  },
+  mapOverlayText: {
+    fontSize: fontSize.sm,
+    color: colors.primary,
+    fontWeight: fontWeight.medium,
   },
   sectionTitle: {
     fontSize: fontSize.lg,
@@ -145,6 +348,46 @@ const styles = StyleSheet.create({
     color: colors.text,
     padding: spacing.md,
     paddingBottom: spacing.sm,
+  },
+  hoursCard: {
+    marginHorizontal: spacing.md,
+    padding: spacing.md,
+    gap: spacing.xs + 2,
+  },
+  hoursText: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    lineHeight: 20,
+  },
+  reviewCard: {
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+    padding: spacing.md,
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  reviewAuthor: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
+    color: colors.text,
+  },
+  reviewRating: {
+    flexDirection: 'row',
+    gap: 2,
+  },
+  reviewText: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    lineHeight: 20,
+  },
+  reviewTime: {
+    fontSize: fontSize.xs,
+    color: colors.textLight,
+    marginTop: spacing.sm,
   },
   emptyReviews: {
     alignItems: 'center',
