@@ -9,7 +9,7 @@ export default function ChatPage() {
       id: 'welcome',
       role: 'assistant',
       content: '안녕하세요! PetAI입니다.\n반려동물에 대해 무엇이든 물어보세요!',
-      created_at: new Date().toISOString(),
+      created_at: '',
     },
   ]);
   const [inputText, setInputText] = useState('');

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import BottomNav from '@/components/layout/BottomNav';
 import TopNav from '@/components/layout/TopNav';
+import AuthHydrator from '@/components/AuthHydrator';
 
 export const metadata: Metadata = {
   title: 'PetAI - 반려동물 AI 상담',
@@ -20,6 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ko">
       <body className="bg-gray-50 pb-20 md:pb-0">
+        <AuthHydrator />
         <TopNav />
         <main className="min-h-screen">{children}</main>
         <BottomNav />
