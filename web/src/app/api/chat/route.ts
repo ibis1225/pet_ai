@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
 const SYSTEM_PROMPT = `당신은 반려동물 전문 AI 상담사 'PetAI'입니다.
 
 역할:
@@ -19,17 +17,26 @@ const SYSTEM_PROMPT = `당신은 반려동물 전문 AI 상담사 'PetAI'입니�
 
 export async function POST(req: NextRequest) {
   try {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json(
+        { content: '오류: OPENAI_API_KEY가 설정되지 않았습니다. web/.env.local 파일을 확인해주세요.' },
+        { status: 500 },
+      );
+    }
+
+    const openai = new OpenAI({ apiKey });
+
     const { message, history } = await req.json();
 
     if (!message || typeof message !== 'string') {
-      return NextResponse.json({ error: '메시지를 입력해주세요.' }, { status: 400 });
+      return NextResponse.json({ content: '오류: 메시지를 입력해주세요.' }, { status: 400 });
     }
 
     const messages: OpenAI.ChatCompletionMessageParam[] = [
       { role: 'system', content: SYSTEM_PROMPT },
     ];
 
-    // Add conversation history
     if (Array.isArray(history)) {
       for (const msg of history.slice(-10)) {
         if (msg.role === 'user' || msg.role === 'assistant') {
@@ -51,10 +58,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ content });
   } catch (error: any) {
-    console.error('Chat API error:', error?.message || error);
-    const detail = error?.message || 'Unknown error';
+    console.error('Chat API error:', error?.status, error?.message || error);
+    const detail = error?.error?.message || error?.message || 'Unknown error';
     return NextResponse.json(
-      { error: detail, content: `오류: ${detail}` },
+      { content: `오류: ${detail}` },
       { status: 500 },
     );
   }
