@@ -1,6 +1,5 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
-import { chatApi } from '@/lib/api';
 import type { ChatMessage } from '@/types';
 
 export default function ChatPage() {
@@ -35,11 +34,21 @@ export default function ChatPage() {
     setIsLoading(true);
 
     try {
-      const response = await chatApi.sendMessage(userMessage.content);
+      const history = messages
+        .filter((m) => m.id !== 'welcome')
+        .map((m) => ({ role: m.role, content: m.content }));
+
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userMessage.content, history }),
+      });
+      const data = await res.json();
+
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: response.data.content || '죄송합니다. 다시 시도해주세요.',
+        content: data.content || '죄송합니다. 다시 시도해주세요.',
         created_at: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, aiMessage]);
