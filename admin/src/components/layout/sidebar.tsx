@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 const navigation = [
   { name: "대시보드", href: "/dashboard", icon: "📊" },
+  { name: "매칭 통계", href: "/stats", icon: "📈" },
   { name: "상담 관리", href: "/consultations", icon: "📝" },
   { name: "사용자 관리", href: "/users", icon: "👥" },
   { name: "업체 관리", href: "/businesses", icon: "🏢" },

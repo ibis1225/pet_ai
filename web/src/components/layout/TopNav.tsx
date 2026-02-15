@@ -42,18 +42,6 @@ export default function TopNav() {
             );
           })}
         </nav>
-
-        {/* Admin Stats */}
-        <div className="ml-auto">
-          <Link href="/admin/stats"
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-              pathname.startsWith('/admin')
-                ? 'bg-gray-900 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}>
-            📊 통계
-          </Link>
-        </div>
       </div>
     </header>
   );
