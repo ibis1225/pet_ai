@@ -51,9 +51,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ content });
   } catch (error: any) {
-    console.error('Chat API error:', error);
+    console.error('Chat API error:', error?.message || error);
+    const detail = error?.message || 'Unknown error';
     return NextResponse.json(
-      { error: '일시적인 오류가 발생했습니다.', content: '죄송합니다. 일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' },
+      { error: detail, content: `오류: ${detail}` },
       { status: 500 },
     );
   }
