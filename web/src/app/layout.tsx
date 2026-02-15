@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import BottomNav from '@/components/layout/BottomNav';
+import TopNav from '@/components/layout/TopNav';
 
 export const metadata: Metadata = {
   title: 'PetAI - 반려동물 AI 상담',
@@ -18,7 +19,8 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko">
-      <body className="bg-gray-50 pb-20">
+      <body className="bg-gray-50 pb-20 md:pb-0">
+        <TopNav />
         <main className="min-h-screen">{children}</main>
         <BottomNav />
       </body>
