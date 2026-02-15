@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useLocation } from '@/hooks/useLocation';
 import { searchNearbyPlaces } from '@/lib/places';
+import { trackEvent } from '@/lib/analytics';
 import type { NearbyPlace } from '@/types';
 
 const CATEGORIES = [
@@ -112,6 +113,7 @@ export default function BusinessPage() {
           <div className="p-4 md:px-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {filteredPlaces.map((place) => (
               <Link key={place.place_id} href={`/business/${place.place_id}?lat=${location.latitude}&lng=${location.longitude}`}
+                onClick={() => trackEvent({ type: 'business_click', category: selectedCategory === 'all' ? undefined : selectedCategory, businessName: place.name, source: 'business_page' })}
                 className="flex bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition">
                 {place.photo_url ? (
                   <img src={place.photo_url} alt={place.name} className="w-24 md:w-32 h-[100px] md:h-[120px] object-cover shrink-0" />

@@ -4,6 +4,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { getPlaceDetail } from '@/lib/places';
 import { getDistance, formatDistance } from '@/lib/distance';
+import { trackEvent } from '@/lib/analytics';
 
 export default function BusinessDetailPage() {
   const params = useParams();
@@ -105,10 +106,10 @@ export default function BusinessDetailPage() {
             {/* Action Buttons */}
             <div className="flex gap-3 px-4 md:px-0 py-3">
               {detail.phone && (
-                <a href={`tel:${detail.phone}`} className="flex-1 h-11 border-2 border-[#FF6B35] text-[#FF6B35] font-semibold rounded-xl flex items-center justify-center text-sm hover:bg-[#FF6B35]/5 transition">전화하기</a>
+                <a href={`tel:${detail.phone}`} onClick={() => trackEvent({ type: 'business_call_click', businessName: detail.name, source: 'business_page' })} className="flex-1 h-11 border-2 border-[#FF6B35] text-[#FF6B35] font-semibold rounded-xl flex items-center justify-center text-sm hover:bg-[#FF6B35]/5 transition">전화하기</a>
               )}
               {detail.google_maps_url && (
-                <a href={detail.google_maps_url} target="_blank" rel="noopener noreferrer" className="flex-1 h-11 bg-[#FF6B35] text-white font-semibold rounded-xl flex items-center justify-center text-sm hover:bg-[#FF6B35]/90 transition">길찾기</a>
+                <a href={detail.google_maps_url} target="_blank" rel="noopener noreferrer" onClick={() => trackEvent({ type: 'business_direction_click', businessName: detail.name, source: 'business_page' })} className="flex-1 h-11 bg-[#FF6B35] text-white font-semibold rounded-xl flex items-center justify-center text-sm hover:bg-[#FF6B35]/90 transition">길찾기</a>
               )}
             </div>
 
@@ -135,7 +136,7 @@ export default function BusinessDetailPage() {
                     src={`https://maps.google.com/maps?q=${detail.latitude},${detail.longitude}&z=16&output=embed`}
                     className="w-full h-full border-0" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
                 </div>
-                <a href={detail.google_maps_url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1.5 py-2.5 border-t border-gray-100 text-sm text-[#FF6B35] font-medium">
+                <a href={detail.google_maps_url} target="_blank" rel="noopener noreferrer" onClick={() => trackEvent({ type: 'business_map_click', businessName: detail.name, source: 'business_page' })} className="flex items-center justify-center gap-1.5 py-2.5 border-t border-gray-100 text-sm text-[#FF6B35] font-medium">
                   🔗 Google Maps에서 보기
                 </a>
               </div>
